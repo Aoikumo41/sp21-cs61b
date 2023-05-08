@@ -18,7 +18,7 @@ public class Primes {
      * @param n an arbitary integrer
      * @return True iff. the integer is prime
      */
-    public static boolean isPrime(int n) {
+    public static boolean   isPrime(int n) {
         // Corner cases
         if (n <= 1 || n == 4) return false;
         if (n <= 3) return true;
