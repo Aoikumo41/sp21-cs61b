@@ -1,11 +1,10 @@
 package game2048;
 
-import java.util.Formatter;
-import java.util.Observable;
+import java.util.*;
 
 
 /** The state of a game of 2048.
- *  @author TODO: YOUR NAME HERE
+ *  @author Aoikumo
  */
 public class Model extends Observable {
     /** Current contents of the board. */
@@ -110,9 +109,22 @@ public class Model extends Observable {
         boolean changed;
         changed = false;
 
-        // TODO: Modify this.board (and perhaps this.score) to account
-        // for the tilt to the Side SIDE. If the board changed, set the
-        // changed local variable to true.
+        Set<Tile> changedTiles = new HashSet<>();
+        board.setViewingPerspective(side);
+        for (int row = board.size() - 2; row >= 0; row--) {
+            for (int col = 0; col < board.size(); col++) {
+                Tile tile = board.tile(col, row);
+                if (tile == null) {
+                    continue;
+                }
+                VTile vTile = new VTile(new Coordinate(col, row), tile);
+                boolean isChangedAfterMove = moveTileUp(vTile, changedTiles);
+                if (isChangedAfterMove) {
+                    changed = true;
+                }
+            }
+        }
+        board.setViewingPerspective(Side.NORTH);
 
         checkGameOver();
         if (changed) {
@@ -120,6 +132,64 @@ public class Model extends Observable {
         }
         return changed;
     }
+
+    private boolean moveTileUp(VTile vTile, Set<Tile> changedTiles) {
+        int targetRow;
+        VTile nearest = findNearestTileAbove(vTile);
+        if (nearest == null) {
+            targetRow = board.size() - 1;
+        } else if (vTile.actualTile.value() == nearest.actualTile.value() && !changedTiles.contains(nearest.actualTile)) {
+            targetRow = nearest.row;
+        } else if (nearest.row == vTile.row + 1) {
+            return false;
+        }else {
+            targetRow = nearest.row - 1;
+        }
+        boolean isMerged = board.move(vTile.col, targetRow, vTile.actualTile);
+        if (isMerged) {
+            score += vTile.actualTile.next().value();
+            changedTiles.add(board.tile(vTile.col, targetRow));
+        }
+        return true;
+    }
+
+    private VTile findNearestTileAbove(VTile vTile) {
+        for (int row = vTile.row + 1; row < board.size(); row++) {
+            Tile actualTile = board.tile(vTile.col, row);
+            if (actualTile != null) {
+                return new VTile(new Coordinate(vTile.col, row), actualTile);
+            }
+        }
+        return null;
+    }
+
+    private static class VTile {
+        int col;
+        int row;
+        Tile actualTile;
+        public VTile(Coordinate c, Tile t) {
+            col = c.col;
+            row = c.row;
+            actualTile = t;
+        }
+    }
+    private static class Coordinate {
+        int col;
+        int row;
+        public Coordinate(int c, int r) {
+            col = c;
+            row = r;
+        }
+        public static Coordinate[] of(int[][] values) {
+            Coordinate[] coordinates = new Coordinate[values.length];
+            for (int i = 0; i < values.length; i++) {
+                int[] coordinate = values[i];
+                coordinates[i] = new Coordinate(coordinate[0], coordinate[1]);
+            }
+            return coordinates;
+        }
+    }
+
 
     /** Checks if the game is over and sets the gameOver variable
      *  appropriately.
@@ -137,7 +207,12 @@ public class Model extends Observable {
      *  Empty spaces are stored as null.
      * */
     public static boolean emptySpaceExists(Board b) {
-        // TODO: Fill in this function.
+        Iterator<Tile> iterator = b.iterator();
+        while(iterator.hasNext()){
+            if (iterator.next() == null){
+                return true;
+            }
+        }
         return false;
     }
 
@@ -147,7 +222,13 @@ public class Model extends Observable {
      * given a Tile object t, we get its value with t.value().
      */
     public static boolean maxTileExists(Board b) {
-        // TODO: Fill in this function.
+        Iterator<Tile> iterator = b.iterator();
+        while(iterator.hasNext()){
+            Tile next = iterator.next();
+            if (next!= null){
+                if(next.value()==Model.MAX_PIECE)return true;
+            }
+        }
         return false;
     }
 
@@ -158,8 +239,28 @@ public class Model extends Observable {
      * 2. There are two adjacent tiles with the same value.
      */
     public static boolean atLeastOneMoveExists(Board b) {
-        // TODO: Fill in this function.
-        return false;
+        Iterator<Tile> iterator = b.iterator();
+        while(iterator.hasNext()){
+            if (iterator.next() == null){
+                return true;
+            }
+        }
+        boolean result = false;
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                int value = b.tile(i,j).value();
+                result = result ||
+                        isSameValue(b,value,i-1,j)
+                        || isSameValue(b,value,i+1,j)
+                        || isSameValue(b,value,i,j-1)
+                        || isSameValue(b,value,i,j+1);
+            }
+        }
+        return result;
+    }
+    private static boolean isSameValue(Board b,int value, int col, int row){
+        if(col<0||col>3||row<0||row>3)return false;
+        return value == b.tile(col, row).value();
     }
 
 
